@@ -141,7 +141,7 @@ export class StripeController {
   // ACCOUNT ENDPOINTS
   // ======================
 
-  @Post('accounts')
+  @Post('create-account')
   async createAccount(@Body() body: { email: string }) {
     try {
       return await this.stripeService.createConnectedAccount(body.email);
@@ -150,7 +150,7 @@ export class StripeController {
     }
   }
 
-  @Post('accounts/onboarding-link')
+  @Post('onboarding-link')
   async getOnboardingLink(@Body() body: { accountId: string }) {
     try {
       return await this.stripeService.generateOnboardingLink(body.accountId);
