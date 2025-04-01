@@ -72,7 +72,6 @@ export class StripeService {
       email,
       capabilities: { 
         transfers: { requested: true },
-        card_payments: { requested: true }
       },
       business_profile: {
         url: "https://godanInfo.com"
