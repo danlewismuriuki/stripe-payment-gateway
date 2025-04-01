@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Param, HttpException, HttpStatus } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 
 @Controller('stripe')
@@ -19,176 +19,161 @@ export class StripeController {
   }
 
   @Post('onboarding-link')
-  async getOnboardingLink(@Body() body: { accountId: string }) {
+  async getOnboardingLink(@Body() body: { accountId: string, email: string }) {
     try {
-      return await this.stripeService.generateOnboardingLink(body.accountId);
+      return await this.stripeService.generateOnboardingLink(body.accountId, body.email);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
+  @Get('onboarding-status/:email')
+  async checkOnboardingStatus(@Param('email') email: string) {
+    try {
+      return await this.stripeService.checkOnboardingCompletion(email);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
 
-   // ======================
-  //  WALLET METHODS
+  // ======================
+  // WALLET METHODS
   // ======================
 
-
-  // Remove the duplicate create-payment-intent endpoint and keep only fund-wallet:
-
-  // Remove the duplicate create-payment-intent endpoint and keep only fund-wallet:
-
-@Post('fund-wallet')
-async fundWallet(@Body() body: { 
-  amount: number, 
-  currency: string, 
-  customerId?: string
-}) {
-  try {
-    // Validate input
-    if (!body.amount || body.amount <= 0) {
-      throw new Error('Amount must be positive');
+  @Post('fund-wallet')
+  async fundWallet(@Body() body: { email: string, amount: number, currency?: string }) {
+    try {
+      return await this.stripeService.createFundingIntent(
+        body.email,
+        body.amount,
+        body.currency
+      );
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
-    if (!body.currency) {
-      throw new Error('Currency is required');
-    }
-
-    // Create payment intent
-    const paymentIntent = await this.stripeService.createPaymentIntent(
-      body.amount,
-      body.currency,
-      body.customerId
-    );
-
-    // Return only the client secret for Stripe.js
-    return {
-      clientSecret: paymentIntent.clientSecret, // Now matches the service
-      amount: body.amount,
-      currency: body.currency
-    };
-    
-  } catch (error) {
-    throw new HttpException(
-      error.message, 
-      HttpStatus.BAD_REQUEST
-    );
   }
-}
-
-@Post('payment-confirmation')
-async handlePaymentConfirmation(@Body() body: {
-  paymentIntentId: string,
-  userId: string,
-  amount: number,
-  currency: string
-}) {
-  try {
-    // Verify payment was successful using the service method
-    const paymentIntent = await this.stripeService.retrievePaymentIntent(
-      body.paymentIntentId
-    );
-
-    if (paymentIntent.status !== 'succeeded') {
-      throw new Error('Payment not completed');
-    }
-
-    // Update wallet balance after successful payment
-    return await this.stripeService.updateWalletBalance(
-      body.userId,
-      body.amount,
-      body.currency,
-      'deposit'
-    );
-  } catch (error) {
-    throw new HttpException(
-      error.message,
-      HttpStatus.BAD_REQUEST
-    );
-  }
-}
 
   // ======================
   // PAYMENT METHODS
   // ======================
 
-  @Get('customers/:customerId/payment-methods')
-  async getPaymentMethods(@Param('customerId') customerId: string) {
+  @Get('customers/:email/payment-methods')
+  async getPaymentMethods(@Param('email') email: string) {
     try {
-      return { methods: await this.stripeService.getPaymentMethods(customerId) };
+      const methods = await this.stripeService.getCustomerPaymentMethods(email);
+      return { methods };
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
   @Post('payment-methods/attach')
-  async attachPaymentMethod(@Body() body: { paymentMethodId: string; customerId: string }) {
+  async attachPaymentMethod(@Body() body: { email: string, paymentMethodId: string }) {
     try {
-      return await this.stripeService.attachPaymentMethod(body.paymentMethodId, body.customerId);
+      return await this.stripeService.attachPaymentMethod(body.email, body.paymentMethodId);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
   // ======================
-  // PAYOUTS
+  // PAYOUTS & EXTERNAL ACCOUNTS
   // ======================
 
-  @Get('accounts/:accountId/payout-methods')
-  async getPayoutMethods(@Param('accountId') accountId: string) {
+  @Get('accounts/:email/payout-methods')
+  async getPayoutMethods(@Param('email') email: string) {
     try {
-      return { methods: await this.stripeService.getPayoutMethods(accountId) };
+      const result = await this.stripeService.getPayoutMethods(email);
+      return {
+        methodType: result.methodType,
+        methods: result.methods,
+        defaultMethod: result.defaultMethod,
+        capabilities: result.capabilities
+      };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('accounts/payout-methods')
+  async addPayoutMethod(@Body() body: { email: string, token: string }) {
+    try {
+      return await this.stripeService.addPayoutMethod(body.email, body.token);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Post('accounts/set-default-payout')
+  async setDefaultPayout(@Body() body: { email: string, methodId: string }) {
+    try {
+      return await this.stripeService.setDefaultPayoutMethod(
+        body.email,
+        body.methodId
+      );
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
   @Post('payouts')
-  async createPayout(@Body() body: {
-    amount: number;
-    currency: string;
-    accountId: string;
-    payoutMethodId: string;
-  }) {
+  async createPayout(@Body() body: { email: string, amount: number }) {
     try {
-      return await this.stripeService.createPayout(
-        body.amount,
-        body.currency,
-        body.accountId,
-        body.payoutMethodId
-      );
-    } catch (error) {
-      throw new HttpException(error.message, error.status || HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  // ======================
-  // WALLET OPERATIONS
-  // ======================
-
-  @Post('wallet/balance')
-  async updateBalance(@Body() body: {
-    userId: string;
-    amount: number;
-    currency: string;
-    type: 'deposit' | 'withdrawal';
-  }) {
-    try {
-      return await this.stripeService.updateWalletBalance(
-        body.userId,
-        body.amount,
-        body.currency,
-        body.type
-      );
+      return await this.stripeService.createPayout(body.email, body.amount);
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
 
   // ======================
-  // WEBHOOK (keep your existing implementation)
+  // ACCOUNT STATUS & BALANCE
   // ======================
-  
+
+  @Get('accounts/:email/status')
+  async getAccountStatus(@Param('email') email: string) {
+    try {
+      return await this.stripeService.getAccountDetails(email);
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // ======================
+  // WEBHOOK HANDLER
+  // ======================
+
   @Post('webhook')
-  async handleWebhook(@Body() body: any) {
-    // Your existing webhook handler
+  async handleWebhook(
+    @Body() body: any,
+    @Req() request: Request
+  ) {
+    try {
+      // Get the Stripe signature from headers
+      const signature = request.headers['stripe-signature'];
+      if (!signature) {
+        throw new HttpException('Missing stripe-signature header', HttpStatus.BAD_REQUEST);
+      }
+
+      // Use raw body if available (needs middleware setup - see below)
+      const rawBody = (request as any).rawBody || JSON.stringify(body);
+      
+      const event = this.stripeService.constructEvent(
+        rawBody, 
+        signature as string
+      );
+
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          await this.stripeService.handleSuccessfulPayment(event.data.object.id);
+          break;
+        case 'account.updated':
+          await this.stripeService.handleAccountUpdate(event.data.object.id);
+          break;
+      }
+
+      return { received: true };
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 }
