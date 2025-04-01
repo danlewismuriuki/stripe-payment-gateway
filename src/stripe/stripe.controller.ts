@@ -42,6 +42,7 @@ export class StripeController {
 
   @Post('fund-wallet')
   async fundWallet(@Body() body: { email: string, amount: number, currency?: string }) {
+    console.log('[DEBUG] Received email:', email);
     try {
       return await this.stripeService.createFundingIntent(
         body.email,
