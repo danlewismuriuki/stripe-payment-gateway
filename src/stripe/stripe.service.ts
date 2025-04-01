@@ -68,6 +68,7 @@ export class StripeService {
     // Create connected account
     const account = await this.stripe.accounts.create({
       type: "express",
+      country: "KE",
       email,
       capabilities: { 
         transfers: { requested: true },
