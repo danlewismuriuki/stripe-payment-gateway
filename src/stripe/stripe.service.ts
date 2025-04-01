@@ -68,14 +68,14 @@ export class StripeService {
     // Create connected account
     const account = await this.stripe.accounts.create({
       type: "express",
-      country: "KE",
+      country: "US",
       email,
       capabilities: { 
         transfers: { requested: true },
         card_payments: { requested: true }
       },
       business_profile: {
-        url: "https://yourplatform.com"
+        url: "https://godanInfo.com"
       }
     });
 
