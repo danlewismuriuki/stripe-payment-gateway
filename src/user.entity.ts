@@ -31,39 +31,76 @@
 // }
 
 
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+// import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+
+// @Entity()
+// export class User {
+//   @PrimaryGeneratedColumn("uuid")
+//   id: string;
+
+//   @Column({ unique: true })
+//   email: string;
+
+//   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+//   walletBalance: number;
+
+//   @Column({ nullable: true })
+//   customerId?: string;
+
+//   @Column({ nullable: true })
+//   connectedAccountId: string;
+
+//   @Column({ type: 'varchar', default: 'USD', length: 3 })
+//   currency: string;
+
+//   @Column({ type: 'boolean', default: false })
+//   isOnboardComplete: boolean;
+
+//   @Column({ type: 'timestamp', nullable: true })
+//   lastPayoutDate: Date;
+
+//   // Add this new field
+//   @Column({ 
+//     type: 'enum', 
+//     enum: ['not_started', 'in_progress', 'complete'],
+//     default: 'not_started'
+//   })
+//   onboardingStatus: string;
+// }
+
+
+// user.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ unique: true })
   email: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  walletBalance: number;
-
   @Column({ nullable: true })
   customerId?: string;
 
   @Column({ nullable: true })
-  connectedAccountId: string;
+  connectedAccountId?: string;
 
-  @Column({ type: 'varchar', default: 'USD', length: 3 })
-  currency: string;
-
-  @Column({ type: 'boolean', default: false })
+  @Column({ default: false })
   isOnboardComplete: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
-  lastPayoutDate: Date;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  walletBalance: number;
 
-  // Add this new field
-  @Column({ 
-    type: 'enum', 
-    enum: ['not_started', 'in_progress', 'complete'],
-    default: 'not_started'
-  })
-  onboardingStatus: string;
+  @Column({ default: 'USD' })
+  currency: string;
+
+  @Column({ nullable: true })
+  onboardingStatus?: string;
+
+  @Column({ nullable: true })
+  lastPayoutDate?: Date;
+
+  @Column({ nullable: true })
+  defaultPaymentMethodId?: string;
 }
