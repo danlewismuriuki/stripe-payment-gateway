@@ -463,7 +463,7 @@
 // }
 
 
-import { Controller, Post, Get, Body, Req, Param, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Param, Headers, HttpException, HttpStatus } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { Request } from 'express';
 import { IsEmail, IsNumber, IsString, IsOptional } from 'class-validator';
@@ -631,29 +631,38 @@ export class StripeController {
     }
   }
 
-  @Post('attach-payment-method')
-  async attachPaymentMethod(@Body() body: PaymentMethodDto): Promise<PaymentMethod> {
-    try {
-      return await this.stripeService.attachPaymentMethod(body.token, body.paymentMethodId);
-    } catch (error) {
-      throw new HttpException(
-        error.message, 
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
-      );
-    }
-  }
+  // @Post('attach-payment-method')
+  // async attachPaymentMethod(@Body() body: PaymentMethodDto): Promise<PaymentMethod> {
+  //   try {
+  //     return await this.stripeService.attachPaymentMethod(body.token, body.paymentMethodId);
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       error.message, 
+  //       error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+  //     );
+  //   }
+  // }
 
-  @Get('payment-methods/:token')
-  async getPaymentMethods(@Param('token') token: string): Promise<PaymentMethod[]> {
-    try {
-      return await this.stripeService.getPaymentMethods(token);
-    } catch (error) {
-      throw new HttpException(
-        error.message, 
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
-      );
+  @Post('attach-payment-method')
+async attachPaymentMethod(
+  @Headers('authorization') authHeader: string,
+  @Body() body: Omit<PaymentMethodDto, 'token'>
+): Promise<PaymentMethod> {
+  try {
+    if (!authHeader) {
+      throw new HttpException('Missing authorization header', HttpStatus.UNAUTHORIZED);
     }
+
+    const token = authHeader.replace('Bearer ', ''); // Extract token from header
+
+    return await this.stripeService.attachPaymentMethod(token, body.paymentMethodId);
+  } catch (error) {
+    throw new HttpException(
+      error.message, 
+      error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+    );
   }
+}
 
   @Post('set-default-payment')
   async setDefaultPaymentMethod(@Body() body: PaymentMethodDto) {
@@ -683,19 +692,42 @@ export class StripeController {
   // PAYOUTS & EXTERNAL ACCOUNTS
   // ======================
 
-  @Get('payout-methods/:token')
-  async getPayoutMethods(@Param('token') token: string): Promise<{
+  // @Get('payout-methods/:token')
+  // async getPayoutMethods(@Param('token') token: string): Promise<{
+  //   methods: PayoutMethod[];
+  //   defaultMethod: string | null;
+  // }> {
+  //   try {
+  //     return await this.stripeService.getPayoutMethods(token);
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       error.message, 
+  //       error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+  //     );
+  //   }
+  // }
+
+  @Get('payout-methods')
+  async getPayoutMethods(@Headers('authorization') authHeader: string): Promise<{
     methods: PayoutMethod[];
     defaultMethod: string | null;
   }> {
-    try {
-      return await this.stripeService.getPayoutMethods(token);
-    } catch (error) {
-      throw new HttpException(
-        error.message, 
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
-      );
+    if (!authHeader) {
+      throw new HttpException('Missing authorization header', HttpStatus.UNAUTHORIZED);
     }
+  
+    const token = authHeader.replace('Bearer ', '');
+    return await this.stripeService.getPayoutMethods(token);
+  }
+  
+  @Get('payment-methods')
+  async getPaymentMethods(@Headers('authorization') authHeader: string): Promise<PaymentMethod[]> {
+    if (!authHeader) {
+      throw new HttpException('Missing authorization header', HttpStatus.UNAUTHORIZED);
+    }
+  
+    const token = authHeader.replace('Bearer ', '');
+    return await this.stripeService.getPaymentMethods(token);
   }
 
   @Post('create-payout')
