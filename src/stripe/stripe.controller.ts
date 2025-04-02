@@ -619,10 +619,50 @@ export class StripeController {
   // PAYMENT METHODS
   // ======================
 
+  // @Post('setup-intent')
+  // async createSetupIntent(@Body() body: { token: string }) {
+  //   try {
+  //     return await this.stripeService.createSetupIntent(body.token);
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       error.message, 
+  //       error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+  //     );
+  //   }
+  // }
+
+  
+  private extractToken(authHeader: string): string {
+    if (!authHeader) {
+      throw new HttpException('Authorization header required', HttpStatus.UNAUTHORIZED);
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      throw new HttpException('Invalid token format', HttpStatus.UNAUTHORIZED);
+    }
+    
+    return token;
+  }
+
+  // @Get('payment-methods')
+  // async getPaymentMethods(@Headers('authorization') authHeader: string) {
+  //   try {
+  //     const token = this.extractToken(authHeader);
+  //     return await this.stripeService.getPaymentMethods(token);
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       error.message, 
+  //       error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+  //     );
+  //   }
+  // }
+
   @Post('setup-intent')
-  async createSetupIntent(@Body() body: { token: string }) {
+  async createSetupIntent(@Headers('authorization') authHeader: string) {
     try {
-      return await this.stripeService.createSetupIntent(body.token);
+      const token = this.extractToken(authHeader);
+      return await this.stripeService.createSetupIntent(token);
     } catch (error) {
       throw new HttpException(
         error.message, 
